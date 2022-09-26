@@ -3,7 +3,10 @@ const {Router} = require("express")
    const {
     rootMessage, 
     hiMessage, 
-    byMessage
+    byMessage,
+    postMessage,  
+    putMessage,
+    deleteMessage
 
 } = require ('../controllers/messages') //Ir a un directorio arriba
 
@@ -12,5 +15,11 @@ const {Router} = require("express")
  router.get("/hi",hiMessage)//End point
 
  router.get('/bye',byMessage)//End point
+
+ router.post('/',postMessage)//End point
+
+ router.put('/',putMessage)//End point
+
+ router.delete('/',deleteMessage)//End point
 
  module.exports = router
