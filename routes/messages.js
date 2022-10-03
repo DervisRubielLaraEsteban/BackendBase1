@@ -12,7 +12,7 @@ const {Router} = require("express")
 
  router.get("/", rootMessage)//End point
 
- router.get("/hi",hiMessage)//End point
+ router.get('/hi/:name',hiMessage)//End point
 
  router.get('/bye',byMessage)//End point
 
