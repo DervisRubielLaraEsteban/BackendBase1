@@ -118,7 +118,7 @@ try {
 
     conn= await pool.getConnection()
 
-    const user = await conn.queary(`SELECT Usuario FROM Usuarios WHERE Usuario = '${Usuarios}'`)
+    const user = await conn.query(`SELECT Usuario FROM Usuarios WHERE Usuario = '${Usuarios}'`)
 
     if (user){
         res.status(403).json({msg:` El usuario ${Usuarios} ya se encuentra registrado.`})
