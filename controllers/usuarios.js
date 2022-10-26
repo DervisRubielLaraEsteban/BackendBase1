@@ -96,7 +96,7 @@ const addUser = async(req = request, res = response) =>{
         Edad,
         Genero,
         Contrasena,
-        Fecha_Nacimiento,
+        Fecha_Nacimiento = '1900-01-01',
         Activo
     }= req.body
     
@@ -118,7 +118,12 @@ try {
 
     conn= await pool.getConnection()
 
+    const user = await conn.queary(`SELECT Usuario FROM Usuarios WHERE Usuario = '${Usuarios}'`)
 
+    if (user){
+        res.status(403).json({msg:` El usuario ${Usuarios} ya se encuentra registrado.`})
+        return
+    }
 
 
     const {affectedRows} = await conn.query(`
@@ -136,8 +141,8 @@ try {
         '${Usuarios}',
         '${Nombre}',
         '${Apellidos}',
-        ${Edad},
-        '${Genero}',
+          ${Edad},
+        '${Genero || 'Null'}',
         '${Contrasena}',
         '${Fecha_Nacimiento}',
         '${Activo}'
@@ -163,3 +168,12 @@ try {
 }
 }
 module.exports = {getUsers, getUserbyID, userDeletedByID, addUser}
+
+/*
+Genero ? chalala : nochalala //Operador Terniario
+if(Genero){
+    chalala
+}else{
+    nochalala
+}
+*/
