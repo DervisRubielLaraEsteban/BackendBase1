@@ -73,7 +73,11 @@ const addUser = async (req=request,res=response)=>{
         Edad,
         Genero,
         Contrasena,
+<<<<<<< HEAD
         Fecha_Nacimiento='1900-01-01',
+=======
+        Fecha_Nacimiento = '1900-01-01',
+>>>>>>> 7fd5930451c52c165d43100213089118585a0c3d
         Activo
     }=req.body
 
@@ -138,17 +142,48 @@ const addUser = async (req=request,res=response)=>{
     }
 }
 
+    const user = await conn.query(`SELECT Usuario FROM Usuarios WHERE Usuario = '${Usuarios}'`)
 
+<<<<<<< HEAD
 const updateUserByUsuario = async (req=request,res=response)=>{
     const {
         Usuario,
+=======
+    if (user){
+        res.status(403).json({msg:` El usuario ${Usuarios} ya se encuentra registrado.`})
+        return
+    }
+
+
+    const {affectedRows} = await conn.query(`
+    
+    INSERT INTO Usuarios (
+        Usuarios,
+>>>>>>> 7fd5930451c52c165d43100213089118585a0c3d
         Nombre,
         Apellidos,
         Edad,
         Genero,
         Contrasena,
+<<<<<<< HEAD
         Fecha_Nacimiento='1900-01-01',
     }=req.body
+=======
+        Fecha_Nacimiento,
+        Activo
+    ) VALUES (
+        '${Usuarios}',
+        '${Nombre}',
+        '${Apellidos}',
+          ${Edad},
+        '${Genero || 'Null'}',
+        '${Contrasena}',
+        '${Fecha_Nacimiento}',
+        '${Activo}'
+    )
+    
+    `, (error) => {throw new Error(error)})
+>>>>>>> 7fd5930451c52c165d43100213089118585a0c3d
 
     if(
         !Nombre||
@@ -273,6 +308,91 @@ const singIn = async (req=request,res=response)=>{
         }
     }
 }
+<<<<<<< HEAD
 
 
 module.exports={getUser,getUserByID,deleteUserByID,addUser,updateUserByUsuario, singIn} 
+=======
+module.exports = {getUsers, getUserbyID, userDeletedByID, addUser}
+
+/////
+
+const updateUserByUsuario = async(req = request, res = response) =>{
+    const {
+        Usuarios,
+        Nombre,
+        Apellidos,
+        Edad,
+        Genero,
+        Contrasena,
+        Fecha_Nacimiento = '1900-01-01',
+    
+    }= req.body
+    
+    if(
+        !Usuarios || 
+        !Nombre ||
+        !Apellidos ||
+        !Edad ||
+        !Contrasena
+    ){
+        res.status(400).json({msg:"Falta información del usuario"})
+        return
+    }
+
+    let conn;
+
+try {
+
+    conn= await pool.getConnection()
+
+    const user = await conn.query(
+        `SELECT Usuario, Nombre, Apellidos, Edad, Genero, Fecha_Nacimiento
+         FROM Usuarios
+         WHERE Usuario = '${Usuarios}'
+         `)
+
+    if (user){
+        res.status(403).json({msg:` El usuario ${Usuarios} ya se encuentra registrado.`})
+        return
+    }
+
+
+    const {affectedRows} = await conn.query(`
+
+    UPDATE Usuarios SET 
+        Nombre = '${Nombre || user.Nombre}',
+        Apellidos ='${Apellidos || user.Apellidos}',
+        Edad = '${Edad || user.Edad}',
+        Genero = '${Genero || user.Genero}',
+        Contrasena = '${Contrasena || user.Contrasena}',
+        Fecha_Nacimiento ='${Fecha_Nacimiento || user.Fecha_Nacimiento}'
+
+    WHERE Usuario = '${Usuarios}'
+    `, (error) => {throw new Error(error)})
+
+    if(affectedRows === 0){
+        res.status(404).json({msg:`No se pudo agregar el registro del usuario ${Usuarios}`})
+        return
+    }
+       res.json({msg:`El usuario ${Usuarios} se agregó satisfactoriamente`})
+      }catch (error){
+       console.log(error)
+       res.status(500).json({error})
+      } finally {
+         if(conn){
+            conn.end()
+        }
+    }   
+}
+
+module.exports = {getUsers, getUserbyID, userDeletedByID, addUser, updateUserByUsuario}
+/*
+Genero ? chalala : nochalala //Operador Terniario
+if(Genero){
+    chalala
+}else{
+    nochalala
+}
+*/
+>>>>>>> 7fd5930451c52c165d43100213089118585a0c3d
