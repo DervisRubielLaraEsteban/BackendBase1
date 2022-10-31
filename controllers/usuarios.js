@@ -1,165 +1,202 @@
 const { request, response } = require("express");
-const { query } = require("../db/connection");
-const pool = require("../db/connection")
+const bcryptjs=require("bcryptjs")
+const pool=require("../db/connection")
+const getUser = async(req=request,res=response)=>{
+       let conn;
 
-const getUsers = async(req = request, res = response) =>{
+    try{
+        conn = await pool.getConnection()
+        const users = await conn.query("SELECT * FROM usuarios",(error)=>{throw new error})
+        if(!users){
+            res.status(404).json({msg:"No se encontraron registros"})
+            return
+        }
+        res.json({users})
+    }catch(error){
+        console.log(error)
+        res.status(500).json({error})
+    }finally{
+        if(conn){
+            conn.end()
+        }
+    }
+}
+
+
+const getUserByID = async (req=request,res=response)=>{
+    const {id}=req.params
     let conn;
-    
-try {
-
-    conn= await pool.getConnection()
-    const users =  await conn.query("SELECT * FROM usuarios", (error) => {throw new Error(error)})
-
-    if(!users){
-        res.status(404).json({msg:"No se encontrarón registros"})
-        return
-    }
-    res.json({users})
-} catch (error){
-    console.log(error)
-    res.status(500).json({error})
-}finally {
-    if(conn){
-        conn.end()
+    try{
+        conn = await pool.getConnection()
+        const [user] = await conn.query(`SELECT * FROM usuarios WHERE ID=${id}`,(error)=>{throw new error})
+        if(!user){
+            res.status(404).json({msg:`No se encontró registro con el ID=${id}`})
+            return
+        }
+        res.json({user})
+    }catch(error){
+        console.log(error)
+        res.status(500).json({error})
+    }finally{
+        if(conn){
+            conn.end()
+        }
     }
 }
-}
 
-
-const getUserbyID = async(req = request, res = response) =>{
-    const {id} = req.params
-    let conn;
-//console.log("Función getUsers")
-//res.json({msg: "Función getUsers"})
-
-//CONTROL DE EXCEPSIONES//
-
-try {
-
-    conn= await pool.getConnection()
-
-    const [user] = await conn.query(`SELECT * FROM usuarios WHERE ID = ${id}`, (error) => {throw new Error(error)})
-
-    if(!user){
-        res.status(404).json({msg:`No se encontraró registro con el ID ${id}`})
-        return
-    }
-    res.json({user})
-} catch (error){
-    console.log(error)
-    res.status(500).json({error})
-} finally {
-    if(conn){
-        conn.end()
-    }
-}
-}
-
-/////
-
-const userDeletedByID = async(req = request, res = response) =>{
-    const {id} = req.query
+const deleteUserByID = async (req=request,res=response)=>{
+    const {id}=req.query
     let conn;
 
-try {
-
-    conn= await pool.getConnection()
-
-    const {affectedRows} = await conn.query(`UPDATE Usuarios SET Activo = 'N' WHERE ID = ${id}`, (error) => {throw new Error(error)})
-
-    if(affectedRows === 0){
-        res.status(404).json({msg:`No se pudo eliminar el registro con el ID ${id}`})
-        return
-    }
-       res.json({msg:`El usuario con el ${id} se eliminó satisfactoriamente`})
-
-      }     
-      
-      catch (error){
-    console.log(error)
-    res.status(500).json({error})
-} finally {
-    if(conn){
-        conn.end()
+    try{
+        conn = await pool.getConnection()
+        const {affectedRows} = await conn.query(`UPDATE usuarios SET Activo='N' WHERE ID=${id}`,(error)=>{throw new error})
+        if(affectedRows===0){
+            res.status(404).json({msg:`No se pudo eliminar el registro con el ID=${id}`})
+            return
+        }
+        res.json({msg:`El usuario con el ID=${id} se elimino correctamente`})
+    }catch(error){
+        console.log(error)
+        res.status(500).json({error})
+    }finally{
+        if(conn){
+            conn.end()
+        }
     }
 }
-}
-//1ra consulta de bases a end point
-
-///
-
-const addUser = async(req = request, res = response) =>{
-    const{
-        Usuarios,
+const addUser = async (req=request,res=response)=>{
+    const {
+        Usuario,
         Nombre,
         Apellidos,
         Edad,
         Genero,
         Contrasena,
-        Fecha_Nacimiento,
+        Fecha_Nacimiento='1900-01-01',
         Activo
-    }= req.body
-    
+    }=req.body
+
     if(
-        !Usuarios || 
-        !Nombre ||
-        !Apellidos ||
-        !Edad ||
-        !Contrasena ||
+        !Usuario||
+        !Nombre||
+        !Apellidos||
+        !Edad||
+        !Contrasena||
         !Activo
     ){
-        res.status(400).json({msg:"Falta información del usuario"})
+        res.status(400).json({msg:"Falta información del usuario."})
         return
     }
 
     let conn;
 
-try {
+    try{
+        conn = await pool.getConnection()
+        const [user]=await conn.query(`SELECT Usuario FROM usuarios WHERE Usuario = '${Usuario}'`)
+        if(user){
+            res.status(403).json({msg:`El usuario '${Usuario}' ya se encuentra registrado.`})
+            return
+        }
 
-    conn= await pool.getConnection()
+        const salt = bcryptjs.genSaltSync()
+        const contrasenaCifrada = bcryptjs.hashSync(Contrasena,salt) 
+
+        const {affectedRows} = await conn.query(`
+            INSERT INTO usuarios(
+                Usuario,
+                Nombre,
+                Apellidos,
+                Edad,
+                Genero,
+                Contrasena,
+                Fecha_Nacimiento,
+                Activo
+            )VALUES(
+                '${Usuario}',
+                '${Nombre}',
+                '${Apellidos}',
+                '${Edad}',
+                '${Genero||''}',
+                '${contrasenaCifrada}',
+                '${Fecha_Nacimiento}',
+                '${Activo}'
+            )
+            `,(error)=>{throw new error})
+        if(affectedRows===0){
+            res.status(404).json({msg:`No se pudo agregar el registro del usuario ${Usuario}`})
+            return
+        }
+        res.json({msg:`El usuario ${Usuario} se agregó correctamente`})
+    }catch(error){
+        console.log(error)
+        res.status(500).json({error})
+    }finally{
+        if(conn){
+            conn.end()
+        }
+    }
+}
 
 
-
-
-    const {affectedRows} = await conn.query(`
-    
-    INSERT INTO Usuarios (
-        Usuarios,
+const updateUserByUsuario = async (req=request,res=response)=>{
+    const {
+        Usuario,
         Nombre,
         Apellidos,
         Edad,
         Genero,
         Contrasena,
-        Fecha_Nacimiento,
-        Activo
-    ) VALUES (
-        '${Usuarios}',
-        '${Nombre}',
-        '${Apellidos}',
-        ${Edad},
-        '${Genero}',
-        '${Contrasena}',
-        '${Fecha_Nacimiento}',
-        '${Activo}'
-    )
-    
-    `, (error) => {throw new Error(error)})
+        Fecha_Nacimiento='1900-01-01',
+    }=req.body
 
-    if(affectedRows === 0){
-        res.status(404).json({msg:`No se pudo agregar el registro del usuario ${Usuarios}`})
+    if(
+        !Nombre||
+        !Apellidos||
+        !Edad||
+        !Contrasena
+    ){
+        res.status(400).json({msg:"Falta información del usuario."})
         return
     }
-       res.json({msg:`El usuario ${Usuarios} se agregó satisfactoriamente`})
 
-      }     
-      
-      catch (error){
-    console.log(error)
-    res.status(500).json({error})
-} finally {
-    if(conn){
-        conn.end()
+    let conn;
+
+    
+
+    try{
+        conn = await pool.getConnection()
+        const [user]=await conn.query(`
+        SELECT Usuario,Nombre,Apellidos,Edad,Genero,Fecha_Nacimiento
+        FROM usuarios 
+        WHERE Usuario = '${Usuario}'`)
+
+        if(!user){
+            res.status(403).json({msg:`El usuario '${Usuario}' no se encuentra registrado.`})
+            return
+        }
+        const {affectedRows} = await conn.query(`
+            UPDATE usuarios SET
+                Nombre='${Nombre||user.Nombre}',
+                Apellidos= '${Apellidos||user.Apellidos}',
+                Edad= '${Edad||user.Edad}',
+                Genero= '${Genero||user.Genero}',
+                Fecha_Nacimiento= '${Fecha_Nacimiento}'
+            WHERE Usuario= '${Usuario}'
+            `,(error)=>{throw new error})
+        if(affectedRows===0){
+            res.status(404).json({msg:`No se pudo actualizar el registro del usuario ${Usuario}`})
+            return
+        }
+        res.json({msg:`El usuario ${Usuario} se actualizo correctamente`})
+    }catch(error){
+        console.log(error)
+        res.status(500).json({error})
+    }finally{
+        if(conn){
+            conn.end()
+        }
     }
 }
-}
-module.exports = {getUsers, getUserbyID, userDeletedByID, addUser}
+
+module.exports={getUser,getUserByID,deleteUserByID,addUser,updateUserByUsuario} 
