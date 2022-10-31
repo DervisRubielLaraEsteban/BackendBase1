@@ -199,4 +199,80 @@ const updateUserByUsuario = async (req=request,res=response)=>{
     }
 }
 
-module.exports={getUser,getUserByID,deleteUserByID,addUser,updateUserByUsuario} 
+//SingIn//
+
+const singIn = async (req=request,res=response)=>{
+    const {
+        Usuario,
+        Contrasena
+        
+    }=req.body
+
+    if(
+        !Usuario||
+        !Contrasena
+    ){
+        res.status(400).json({msg:"Falta información del usuario."})
+        return
+    }
+
+    let conn;
+
+    try{
+        conn = await pool.getConnection()
+        const [user]=await conn.query(`SELECT Usuario, Contrasena FROM usuarios WHERE Usuario = '${Usuario}'`)
+
+
+
+        if(!user || user.Activo ==='N'){
+            let code = !user ? 1 : 2;
+            res.status(403).json({msg:`El usuario o la Contraseña son incorrectos`, errorCode: code})
+            return
+        }
+
+        const accesoValido = bcryptjs.compareSync(Contrasena, user.Contrasena)
+
+        if(!accesoValido){
+            res.status(403).json({msg:`El usuario o la Contraseña son incorrectos`, errorCode: 3})
+            return
+        }
+        res.json({msg:`El usuario ${Usuario} ha iniciado satisfactoriamente`})
+        
+        const {affectedRows} = await conn.query(`
+            INSERT INTO usuarios(
+                Usuario,
+                Nombre,
+                Apellidos,
+                Edad,
+                Genero,
+                Contrasena,
+                Fecha_Nacimiento,
+                Activo
+            )VALUES(
+                '${Usuario}',
+                '${Nombre}',
+                '${Apellidos}',
+                '${Edad}',
+                '${Genero||''}',
+                '${contrasenaCifrada}',
+                '${Fecha_Nacimiento}',
+                '${Activo}'
+            )
+            `,(error)=>{throw new error})
+        if(affectedRows===0){
+            res.status(404).json({msg:`No se pudo agregar el registro del usuario ${Usuario}`})
+            return
+        }
+        res.json({msg:`El usuario ${Usuario} se agregó correctamente`})
+    }catch(error){
+        console.log(error)
+        res.status(500).json({error})
+    }finally{
+        if(conn){
+            conn.end()
+        }
+    }
+}
+
+
+module.exports={getUser,getUserByID,deleteUserByID,addUser,updateUserByUsuario, singIn} 
