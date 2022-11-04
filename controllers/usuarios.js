@@ -248,16 +248,16 @@ const signIn = async (req=request,res=response)=>{
 const ContraNueva = async (req=request,res=response)=>{
     const {
         Usuario,
-        AContrasena,
-        NContrasena
+        AntContra,
+        NuvContra
     }=req.body
 
     if(
         !Usuario||
-        !AContrasena||
-        !NContrasena
+        !AntContra||
+        !NuvContra
     ){
-        res.status(400).json({msg:"Faltan datos."})
+        res.status(400).json({msg:"Se necesitan mas datos para completar la tarea."})
         return
     }
 
@@ -273,7 +273,7 @@ const ContraNueva = async (req=request,res=response)=>{
             return
         }
 
-        const datosValidos = bcryptjs.compareSync(AContrasena,user.Contrasena)
+        const datosValidos = bcryptjs.compareSync(AntContra,user.Contrasena)
 
         if(!datosValidos){
             res.status(403).json({msg:`El usuario o la contraseña son incorrectos`,errorCode:"3"})
@@ -281,24 +281,24 @@ const ContraNueva = async (req=request,res=response)=>{
         }
 
         const salt = bcryptjs.genSaltSync()
-        const contrasenaCifrada = bcryptjs.hashSync(NContrasena,salt) 
+        const contraCifrada = bcryptjs.hashSync(NuvContra,salt) 
 
         const {affectedRows} = await conn.query(`
             UPDATE usuarios SET
-                Contrasena='${contrasenaCifrada}'
+                Contrasena='${contraCifrada}'
             WHERE Usuario= '${Usuario}'
             `,(error)=>{throw new error})
-        if(affectedRows===0){
-            res.status(404).json({msg:`No se pudo actualizar la contraseña de ${Usuario}`})
-            return
-        }
-        res.json({msg:`La contraseña de ${Usuario} se actualizo correctamente`})
-    }catch(error){
-        console.log(error)
-        res.status(500).json({error})
-    }finally{
-        if(conn){
-            conn.end()
+                if(affectedRows===0){
+                  res.status(404).json({msg:`No se pudo actualizar la contraseña de ${Usuario}`})
+                  return
+             }
+                   res.json({msg:`La contraseña de ${Usuario} se actualizo correctamente`})
+                         }catch(error){
+                           console.log(error)
+                             res.status(500).json({error})
+                         }finally{
+                         if(conn){
+                      conn.end()
         }
     }
 }
