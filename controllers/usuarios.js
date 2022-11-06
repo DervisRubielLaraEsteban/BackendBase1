@@ -1,12 +1,13 @@
 const { request, response } = require("express");
 const bcryptjs=require("bcryptjs")
-const pool=require("../db/connection")
+const pool=require("../db/connection");
+const modeloUsuario = require("../Models/usuarios");
 const getUser = async(req=request,res=response)=>{
     let conn;
 
     try{
         conn = await pool.getConnection()
-        const users = await conn.query("SELECT * FROM usuarios",(error)=>{throw new error})
+        const users = await conn.query(modeloUsuario.queryGetUsers[Usuario],(error)=>{throw new error})
         if(!users){
             res.status(404).json({msg:"No se encontraron registros"})
             return
@@ -28,7 +29,7 @@ const getUserByID = async (req=request,res=response)=>{
     let conn;
     try{
         conn = await pool.getConnection()
-        const [user] = await conn.query(`SELECT * FROM usuarios WHERE ID=${id}`,(error)=>{throw new error})
+        const [user] = await conn.query(modeloUsuario.queryGetUserByID [Usuario],(error)=>{throw new error})
         if(!user){
             res.status(404).json({msg:`No se encontró registro con el ID=${id}`})
             return
@@ -50,7 +51,7 @@ const deleteUserByID = async (req=request,res=response)=>{
 
     try{
         conn = await pool.getConnection()
-        const {affectedRows} = await conn.query(`UPDATE usuarios SET Activo='N' WHERE ID=${id}`,(error)=>{throw new error})
+        const {affectedRows} = await conn.query(modeloUsuario.queryDeleteUserByID [Usuario],(error)=>{throw new error})
         if(affectedRows===0){
             res.status(404).json({msg:`No se pudo eliminar el registro con el ID=${id}`})
             return
@@ -93,7 +94,7 @@ const addUser = async (req=request,res=response)=>{
 
     try{
         conn = await pool.getConnection()
-        const [user]=await conn.query(`SELECT Usuario FROM usuarios WHERE Usuario = '${Usuario}'`)
+        const [user]=await conn.query(modeloUsuario.queryUserExists, [Usuario])
         if(user){
             res.status(403).json({msg:`El usuario '${Usuario}' ya se encuentra registrado.`})
             return
@@ -102,27 +103,17 @@ const addUser = async (req=request,res=response)=>{
         const salt = bcryptjs.genSaltSync()
         const contrasenaCifrada = bcryptjs.hashSync(Contrasena,salt) 
 
-        const {affectedRows} = await conn.query(`
-            INSERT INTO usuarios(
-                Usuario,
-                Nombre,
-                Apellidos,
-                Edad,
-                Genero,
-                Contrasena,
-                Fecha_Nacimiento,
-                Activo
-            )VALUES(
-                '${Usuario}',
-                '${Nombre}',
-                '${Apellidos}',
-                '${Edad}',
-                '${Genero||''}',
-                '${contrasenaCifrada}',
-                '${Fecha_Nacimiento}',
-                '${Activo}'
-            )
-            `,(error)=>{throw new error})
+        const {affectedRows} = await conn.query(modeloUsuario.queryAddUser [
+              Usuario,
+              Nombre,
+              Apellidos,
+              Edad,
+              Genero || '',
+              contrasenaCifrada,
+              Fecha_Nacimiento,
+              Activo
+        ]
+            ,(error)=>{throw new error})
         if(affectedRows===0){
             res.status(404).json({msg:`No se pudo agregar el registro del usuario ${Usuario}`})
             return
@@ -164,24 +155,20 @@ const updateUserByUsuario = async (req=request,res=response)=>{
 
     try{
         conn = await pool.getConnection()
-        const [user]=await conn.query(`
-        SELECT Usuario,Nombre,Apellidos,Edad,Genero,Fecha_Nacimiento
-        FROM usuarios 
-        WHERE Usuario = '${Usuario}'`)
+        const [user]=await conn.query(modeloUsuario.queryGetUserInfo,[Usuario])
 
         if(!user){
             res.status(403).json({msg:`El usuario '${Usuario}' no se encuentra registrado.`})
             return
         }
-        const {affectedRows} = await conn.query(`
-            UPDATE usuarios SET
-                Nombre='${Nombre||user.Nombre}',
-                Apellidos= '${Apellidos||user.Apellidos}',
-                Edad= '${Edad||user.Edad}',
-                Genero= '${Genero||user.Genero}',
-                Fecha_Nacimiento= '${Fecha_Nacimiento}'
-            WHERE Usuario= '${Usuario}'
-            `,(error)=>{throw new error})
+        const {affectedRows} = await conn.query(modeloUsuario.queryUpdateByUsuario, [
+                Nombre || user.Nombre,
+                Apellidos || user.Apellidos,
+                Edad || user.Edad,
+                Genero ||user.Genero,
+                Fecha_Nacimiento,
+                Usuario
+        ],(error)=>{throw new error})
         if(affectedRows===0){
             res.status(404).json({msg:`No se pudo actualizar el registro del usuario ${Usuario}`})
             return
@@ -217,7 +204,7 @@ const signIn = async (req=request,res=response)=>{
 
     try{
         conn = await pool.getConnection()
-        const [user]=await conn.query(`SELECT Usuario, Contrasena, Activo FROM usuarios WHERE Usuario = '${Usuario}'`)
+        const [user]=await conn.query(modeloUsuario.querySignIn, [Usuario])
 
         if(!user || user.Activo == 'N'){
             let code = !user ? 1: 2;
@@ -265,7 +252,7 @@ const ContraNueva = async (req=request,res=response)=>{
 
     try{
         conn = await pool.getConnection()
-        const [user]=await conn.query(`SELECT Usuario, Contrasena, Activo FROM usuarios WHERE Usuario = '${Usuario}'`)
+        const [user]=await conn.query(modeloUsuario.querySignIn, [Usuario])
 
         if(!user || user.Activo == 'N'){
             let code = !user ? 1: 2;
@@ -283,11 +270,10 @@ const ContraNueva = async (req=request,res=response)=>{
         const salt = bcryptjs.genSaltSync()
         const contraCifrada = bcryptjs.hashSync(NuvContra,salt) 
 
-        const {affectedRows} = await conn.query(`
-            UPDATE usuarios SET
-                Contrasena='${contraCifrada}'
-            WHERE Usuario= '${Usuario}'
-            `,(error)=>{throw new error})
+        const {affectedRows} = await conn.query(modeloUsuario.queryUpdatePassword,[
+              contraCifrada,
+              Usuario
+            ],(error)=>{throw new error})
                 if(affectedRows===0){
                   res.status(404).json({msg:`No se pudo actualizar la contraseña de ${Usuario}`})
                   return
